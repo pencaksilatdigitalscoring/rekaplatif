@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rekapitulasi - Digital Scoring Pencak Silat TGR</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK (Compatibility Version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <!-- Export & Import Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #00d2ff;
+            --bg-color: #f0f4f8;
+            --card-bg: #ffffff;
+            --text-main: #2d3436;
+            --text-sub: #636e72;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+            --info: #8e44ad;
+            --dark: #2d3436;
+            --shadow: 0 10px 20px rgba(0,0,0,0.05);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Header Styling */
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            padding: 15px;
+            color: white;
+            text-align: center;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        header h1 { font-size: 1.5rem; font-weight: 700; text-transform: uppercase; }
+        header p { font-size: 0.8rem; opacity: 0.9; }
+
+        .lang-switch {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .lang-switch button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.5);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .lang-switch button:hover {
+            background: rgba(255,255,255,0.4);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 10px 20px 10px;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        /* PANEL UMUM */
+        .panel { background: white; border-radius: 15px; padding: 15px; box-shadow: var(--shadow); }
+        .panel-title { margin-bottom: 15px; font-size: 1.1rem; color: var(--primary-color); border-left: 4px solid var(--primary-color); padding-left: 10px; }
+
+        .btn-ctl { padding: 10px 15px; border: none; border-radius: 8px; color: white; font-weight: 700; cursor: pointer; font-size: 0.75rem; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-ud { background: var(--info); }
+        .btn-danger { background: var(--danger); }
+        .btn-danger-dark { background: #c0392b; }
+
+        .table-responsive { overflow-x: auto; margin-top: 15px; }
+        .op-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 900px; }
+        .op-table th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6; color: var(--text-sub); }
+        .op-table td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .op-table tr:hover { background-color: #f1f7ff; }
+
+        .group-header {
+            background: #2d3436;
+            color: white;
+            padding: 8px 15px !important;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-btn {
+            padding: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.3s;
+        }
+
+        footer { padding: 15px; text-align: center; font-size: 0.7rem; color: var(--text-sub); margin-top: auto; }
+
+        @media (max-width: 768px) {
+            header h1 { font-size: 1.2rem; }
+            .op-table { font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header id="main-header">
+        <div class="lang-switch">
+            <button onclick="changeLanguage('id')">ID</button>
+            <button onclick="changeLanguage('en')">EN</button>
+        </div>
+        <h1 data-i18n="menu_rekapitulasi">Rekapitulasi</h1>
+        <p data-i18n="header_sub">Pencak Silat Digital System | Tunggal - Ganda - Regu</p>
+    </header>
+
+    <div class="container">
+        <!-- SEKSI REKAPITULASI -->
+        <div class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+                <h2 class="panel-title" style="margin-bottom: 0;" data-i18n="rekap_nilai">Rekapitulasi Nilai Peserta</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-ctl btn-ud" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> <span data-i18n="excel">Excel</span></button>
+                    <button class="btn-ctl btn-danger" onclick="exportToPDF()"><i class="fas fa-file-pdf"></i> <span data-i18n="pdf">PDF</span></button>
+                    <button class="btn-ctl btn-danger-dark" onclick="deleteAllRekap()"><i class="fas fa-trash-alt"></i> <span data-i18n="hapus_semua">Hapus Semua</span></button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="op-table" id="rekap-table-content">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px; text-align: center;" data-i18n="peringkat">Peringkat</th>
+                            <th data-i18n="nama_kontingen">Nama & Kontingen</th>
+                            <th data-i18n="kategori">Kategori</th>
+                            <th data-i18n="waktu">Waktu</th>
+                            <th data-i18n="avg_med">Avg / Med</th>
+                            <th data-i18n="stdev">St. Dev</th>
+                            <th data-i18n="nilai_akhir">Nilai Akhir</th>
+                            <th style="width: 80px; text-align: center;" data-i18n="aksi">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rekap-table-body">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2023 - 2026 IPSI Digital Scoring System | Rekapitulasi Panel
+    </footer>
+
+    <script>
+        // TRANSLATION DICTIONARY
+        const translations = {
+            id: {
+                "menu_rekapitulasi": "Rekapitulasi",
+                "header_sub": "Pencak Silat Digital System | Tunggal - Ganda - Regu",
+                "rekap_nilai": "Rekapitulasi Nilai Peserta",
+                "excel": "Excel",
+                "pdf": "PDF",
+                "hapus_semua": "Hapus Semua",
+                "peringkat": "Peringkat",
+                "nama_kontingen": "Nama & Kontingen",
+                "kategori": "Kategori",
+                "waktu": "Waktu",
+                "avg_med": "Avg / Med",
+                "stdev": "St. Dev",
+                "nilai_akhir": "Nilai Akhir",
+                "aksi": "Aksi",
+                "text_belum_ada_rekap": "Belum ada data rekapitulasi...",
+                "alert_del_rekap": "Hapus data rekap ini?",
+                "alert_del_all_rekap": "PERINGATAN! Hapus seluruh data rekapitulasi?"
+            },
+            en: {
+                "menu_rekapitulasi": "Recapitulation",
+                "header_sub": "Pencak Silat Digital System | Solo - Duo - Team",
+                "rekap_nilai": "Participants Score Recapitulation",
+                "excel": "Excel",
+                "pdf": "PDF",
+                "hapus_semua": "Delete All",
+                "peringkat": "Rank",
+                "nama_kontingen": "Name & Contingent",
+                "kategori": "Category",
+                "waktu": "Time",
+                "avg_med": "Avg / Med",
+                "stdev": "St. Dev",
+                "nilai_akhir": "Final Score",
+                "aksi": "Action",
+                "text_belum_ada_rekap": "No recapitulation data yet...",
+                "alert_del_rekap": "Delete this recap data?",
+                "alert_del_all_rekap": "WARNING! Delete all recapitulation data?"
+            }
+        };
+
+        let currentLang = localStorage.getItem('appLang') || 'id';
+
+        function t(key) {
+            if (translations[currentLang] && translations[currentLang][key]) {
+                return translations[currentLang][key];
+            }
+            return key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('appLang', lang);
+            
+            // Translate static elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                el.innerHTML = t(key);
+            });
+
+            // Re-render table to apply new language in dynamically generated HTML
+            renderRekap();
+        }
+
+        // FIREBASE INITIALIZATION
+        const firebaseConfig = {
+  apiKey: "AIzaSyBML8_WknVxi1LaCoIvRPQwQwWxkpYY7Mc",
+  authDomain: "tanding-latif.firebaseapp.com",
+  databaseURL: "https://tanding-latif-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tanding-latif",
+  storageBucket: "tanding-latif.firebasestorage.app",
+  messagingSenderId: "1088072457964",
+  appId: "1:1088072457964:web:e23c40cf40409c83468fc9"
+};
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let globalRekapData = [];
+
+        // INITIAL SYNC FROM FIREBASE
+        db.ref('rekap').on('value', (snapshot) => {
+            const data = snapshot.val();
+            globalRekapData = data ? Object.keys(data).map(key => ({id: key, ...data[key]})) : [];
+            renderRekap();
+        });
+
+        // FUNCTION TO RENDER TABLE
+        function renderRekap() {
+            const tbody = document.getElementById('rekap-table-body');
+            if(globalRekapData.length === 0) { 
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; opacity:0.5; padding:40px;">${t('text_belum_ada_rekap')}</td></tr>`; 
+                return; 
+            }
+            tbody.innerHTML = '';
+            
+            const groups = {};
+            globalRekapData.forEach(item => {
+                const groupKey = (item.kategori || '-').toUpperCase();
+                if(!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(item);
+            });
+            
+            for(const groupName in groups) {
+                // Sorting logik: Nilai Akhir Terbesar, Jika Seri -> StDev Terkecil, Jika Seri -> Waktu Tercepat
+                groups[groupName].sort((a, b) => {
+                    const scoreA = typeof a.final === 'number' ? a.final : -999;
+                    const scoreB = typeof b.final === 'number' ? b.final : -999;
+                    
+                    if(scoreA !== scoreB) {
+                        return scoreB - scoreA;
+                    } else {
+                        const stdevA = a.stdev || 0;
+                        const stdevB = b.stdev || 0;
+                        if(stdevA !== stdevB) return stdevA - stdevB; 
+                        const timeA = a.timerMs || 9999999;
+                        const timeB = b.timerMs || 9999999;
+                        return timeA - timeB; 
+                    }
+                });
+
+                tbody.innerHTML += `<tr><td colspan="8" class="group-header">${groupName}</td></tr>`;
+                
+                groups[groupName].forEach((item, index) => {
+                    const finalDisp = typeof item.final === 'number' ? item.final.toFixed(3) : item.final;
+                    const waktuDisp = item.waktu || '00:00.00';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="text-align:center; font-weight:700; font-size:1.1rem; color:var(--primary-color);">${index + 1}</td>
+                            <td>
+                                <div style="font-weight:700;">${item.name}</div>
+                                <div style="font-size:0.7rem; color:var(--text-sub);">${item.cont}</div>
+                            </td>
+                            <td style="font-size:0.8rem;">${item.kategori}</td>
+                            <td style="font-family: monospace; font-size:0.9rem; font-weight:600;">${waktuDisp}</td>
+                            <td>${item.median ? item.median.toFixed(2) : '0.00'}</td>
+                            <td>${item.stdev ? item.stdev.toFixed(3) : '0.000'}</td>
+                            <td style="font-weight:700; color:var(--primary-color); font-size:1.1rem;">${finalDisp}</td>
+                            <td style="text-align:center;">
+                                <button class="status-btn" style="background:var(--danger); color:white; border:none;" onclick="deleteRekapItem('${item.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        // DATABASE ACTIONS
+        function deleteRekapItem(id) { 
+            if(confirm(t('alert_del_rekap'))) db.ref('rekap/' + id).remove(); 
+        }
+        function deleteAllRekap() { 
+            if(confirm(t('alert_del_all_rekap'))) db.ref('rekap').remove(); 
+        }
+        
+        // EXPORT FUNCTIONS
+        function exportToExcel() { 
+            if(globalRekapData.length === 0) return; 
+            const wsData = [["PERINGKAT", "NAMA", "KONTINGEN", "KATEGORI", "WAKTU", "AVG/MED", "ST. DEV", "NILAI AKHIR"]]; 
+            
+            const groups = {};
+            globalRekapData.forEach(item => {
+                const groupKey = (item.kategori || '-').toUpperCase();
+                if(!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(item);
+            });
+            
+            for(const groupName in groups) {
+                groups[groupName].sort((a, b) => {
+                    const scoreA = typeof a.final === 'number' ? a.final : -999;
+                    const scoreB = typeof b.final === 'number' ? b.final : -999;
+                    if(scoreA !== scoreB) return scoreB - scoreA;
+                    const stdevA = a.stdev || 0;
+                    const stdevB = b.stdev || 0;
+                    if(stdevA !== stdevB) return stdevA - stdevB;
+                    return (a.timerMs || 9999999) - (b.timerMs || 9999999);
+                });
+                
+                wsData.push([`KATEGORI: ${groupName}`, "", "", "", "", "", "", ""]);
+
+                groups[groupName].forEach((item, index) => { 
+                    const f = typeof item.final === 'number' ? item.final.toFixed(3) : item.final; 
+                    const waktuDisp = item.waktu || '00:00.00';
+                    wsData.push([index + 1, item.name, item.cont, item.kategori, waktuDisp, item.median ? item.median.toFixed(2) : '0.00', item.stdev ? item.stdev.toFixed(3) : '0.000', f]); 
+                });
+            }
+
+            const wb = XLSX.utils.book_new(); 
+            const ws = XLSX.utils.aoa_to_sheet(wsData); 
+            XLSX.utils.book_append_sheet(wb, ws, "Rekap"); 
+            XLSX.writeFile(wb, "Rekap_Scoring_TGR.xlsx"); 
+        }
+
+        function exportToPDF() { 
+            if(globalRekapData.length === 0) return; 
+            const { jsPDF } = window.jspdf; 
+            const doc = new jsPDF(); 
+            doc.text("REKAPITULASI NILAI DIGITAL SCORING TGR", 14, 15); 
+            
+            const tableBody = [];
+            const groups = {};
+            globalRekapData.forEach(item => {
+                const groupKey = (item.kategori || '-').toUpperCase();
+                if(!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(item);
+            });
+            
+            for(const groupName in groups) {
+                groups[groupName].sort((a, b) => {
+                    const scoreA = typeof a.final === 'number' ? a.final : -999;
+                    const scoreB = typeof b.final === 'number' ? b.final : -999;
+                    if(scoreA !== scoreB) return scoreB - scoreA;
+                    const stdevA = a.stdev || 0;
+                    const stdevB = b.stdev || 0;
+                    if(stdevA !== stdevB) return stdevA - stdevB;
+                    return (a.timerMs || 9999999) - (b.timerMs || 9999999);
+                });
+                
+                tableBody.push([{ content: groupName, colSpan: 6, styles: { fillColor: [45, 52, 54], textColor: [255, 255, 255], fontStyle: 'bold' } }]);
+                
+                groups[groupName].forEach((item, index) => { 
+                    const f = typeof item.final === 'number' ? item.final.toFixed(3) : item.final; 
+                    const waktuDisp = item.waktu || '00:00.00';
+                    tableBody.push([index + 1, `${item.name}\n(${item.cont})`, waktuDisp, item.median ? item.median.toFixed(2) : '0.00', item.stdev ? item.stdev.toFixed(3) : '0.000', f]); 
+                });
+            }
+
+            doc.autoTable({ 
+                startY: 30, 
+                head: [["PERINGKAT", "NAMA & KONTINGEN", "WAKTU", "AVG/MED", "ST. DEV", "TOTAL NILAI"]], 
+                body: tableBody, 
+                theme: 'striped', 
+                headStyles: { fillColor: [0, 123, 255] } 
+            }); 
+            doc.save("Rekapitulasi_TGR.pdf"); 
+        }
+
+        // Initialize language on load
+        document.addEventListener("DOMContentLoaded", () => {
+            changeLanguage(currentLang);
+        });
+    </script>
+</body>
+</html>
